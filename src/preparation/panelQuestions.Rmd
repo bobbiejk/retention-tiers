@@ -1,0 +1,93 @@
+---
+title: "Panel Questions"
+output: html_document
+date: "2024-12-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F)
+
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(jtools)
+
+```
+
+
+```{r read in data}
+
+# Read in the data
+raw = fread("../../data/survey_US202201_202405.csv")
+final = fread("../../gen/preparation/output/panelFinal_US.csv")
+
+# Panel read in date format
+raw$month = as.Date(paste(raw$period, "01", sep = ""), "%Y%m%d")
+
+```
+
+
+
+```{r}
+print(paste("Country: ", "USA"))
+print(paste("Time Period: ", min(raw$month), " to ", max(raw$month))) 
+
+print(paste("Number of rows (Panelist-period-question): ", nrow(raw)))
+
+print(paste("Unique Panelists: ", length(unique(raw$Panelist))))
+print(paste("Unique Platforms: ", length(unique(raw$platform))-1))
+print(paste("Unique Questions: ", length(unique(raw$field_description))))
+print(paste("Unique Periods: ", length(unique(raw$month))))
+
+print("10 Most Popular SVOD platforms:")
+print(raw %>% filter(field_description == "Subscriptions Video")) %>% group_by(Field_Answer) %>% summarise(n = n()) %>% arrange(desc(n)) %>% head(10)
+
+print("First 10 columns example:")
+head(raw %>% arrange(Panelist, month))
+```
+
+
+```{r}
+
+panelAnswersDisplay = function(question){
+  
+  print(question)
+  
+  # Get the overall Frequencies of the Answers
+  freq = raw %>% 
+    filter(field_description == !!question) %>% 
+    group_by(Field_Answer) %>% 
+    summarise(n = n()) %>% 
+    arrange(desc(n))
+  
+  print("Variation in Panel")
+  print(freq)
+  
+  # Get the Variation per Panelist-Platform
+  # freq.panelist = raw %>% 
+  #   filter(question == !!question) %>% 
+  #   group_by(Panelist, subscription, Field_Answer) %>% 
+  #   summarise(n = n()) %>% 
+  #   ungroup() %>%
+  #   summarise(meanAcrossPanelist = mean(n, na.rm= T),
+  #             sdAcrossPanelist = mean(n, na.rm= T),
+  #             minAcrossPanelist = min(n, na.rm= T),
+  #             maxAcrossPanelist = max(n, na.rm = T))
+  # 
+  # print("Variation in Panelist - Platform pair")
+  # print(freq.panelist)
+  
+}
+
+print("Panelist Related Questions")
+
+lapply(unique(raw$field_description[raw$subscription == 0]), panelAnswersDisplay)
+
+
+print("Subscription Related Questions")
+
+lapply(unique(raw$field_description[raw$subscription != 0]), panelAnswersDisplay)
+
+
+```

@@ -1,0 +1,833 @@
+---
+title: "panelResponsiveness"
+output: html_document
+date: "2024-11-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(jtools)
+```
+
+
+
+```{r read in data}
+
+# Read in the data
+raw = fread("../../data/survey_US202201_202405.csv")
+final = fread("../../gen/preparation/output/panelFinal_US.csv")
+
+# Panel read in date format
+raw$month = as.Date(paste(raw$period, "01", sep = ""), "%Y%m%d")
+
+# Data.table solution for summing all the sub.BAND in group Panelist - month
+final = as.data.table(final)[, SubscriptionSet := sum(sub.BAND), by = c("Panelist", "month")]
+
+# Add the platform names
+coding.subscriptions = fread("../../data/subscriptions.csv")
+colnames(coding.subscriptions) = c("subscription_code", "platform")
+
+# Merge Subscription Coding
+raw = left_join(raw, coding.subscriptions, by = c("subscription" = "subscription_code"))
+
+```
+
+
+```{r panelists in survey}
+
+unweight = raw %>% distinct(Panelist, month) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists in the survey", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% distinct(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+```{r new panelist in survey}
+
+unweight = raw %>% arrange(month) %>% distinct(Panelist, .keep_all = T) %>% select(Panelist, month) %>% group_by(month) %>% summarise(nNewPanelist = n()) %>%
+  ggplot(aes(x = month, y = nNewPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of New Panelists in the survey", x = "Period", y = "Number of New Panelists") +ylim(0, NA)
+
+weight = raw %>% arrange(month) %>% distinct(Panelist, .keep_all = T) %>% select(Panelist, month, weight2) %>% group_by(month) %>% summarise(nNewPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nNewPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of New Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+```{r panelist last time observed}
+
+unweight = raw %>% arrange(desc(month)) %>% distinct(Panelist, .keep_all = T) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Observed in the survey", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+  
+weight = raw %>% arrange(desc(month)) %>% distinct(Panelist, .keep_all = T) %>% select(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%   ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+
+```{r panelists filling in subscription question in survey}
+
+unweight = raw %>% filter(field_description == "Subscribe to Video") %>% distinct(Panelist, month) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Answering Whether They Subscribe To Video", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(field_description == "Subscribe to Video") %>% distinct(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+```{r panelists answering yes to subscribing in survey}
+
+unweight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Answering Yes to Subscribing to Video", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>% 
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+```{r panelists answering no to subscribing in survey}
+
+unweight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "No") %>% distinct(Panelist, month) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Answering No to Subscribing to Video", x = "Period", y = "Number of Panelists") +ylim(0, 20000)
+
+weight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "No") %>% distinct(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, 12e+07)
+
+unweight + weight
+
+```
+
+```{r}
+unweight = raw %>% filter(subscription != 0) %>% distinct(Panelist, month) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Being Asked Platform-Related Questions", subtitle = "Note. Should be Similar to Panelists Answering Yes to Subscribe", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(subscription != 0) %>% distinct(Panelist, month, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+```
+```{r}
+unweight = raw %>% filter(subscription != 0) %>% distinct(Panelist, month, subscription) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() +ylim(0, NA) + labs(title = "Number of Panelists-Platform pairs", subtitle = "Note. Should be equal or larger than Panelists Answering Yes to Subscribing", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(subscription != 0) %>% distinct(Panelist, month, subscription, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>% 
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+```{r}
+unweight = raw %>% filter(field_description == "Subcription with Advertisements") %>% distinct(Panelist, month, subscription) %>% group_by(month) %>% summarise(nPanelist = n()) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() +ylim(0, NA) + labs(title = "Number of Panelists Answering Ad-Supported Question", subtitle = "Note. Should be Similar to Panelist-Platform pairs", x = "Period", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(field_description == "Subcription with Advertisements") %>% distinct(Panelist, month, subscription, weight2) %>% group_by(month) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+  ggplot(aes(x = month, y = nPanelist)) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Period", y = "Number of Panelists") + ylim(0, NA)
+
+unweight + weight
+
+```
+
+### Notes.
+
+- There is a increase in the number of panelists that say "Yes" to being subscribed in and after 2023-04-01.
+- There is an increase in the number of platforms panelists say they are subscribed to in and after 2023-04-01
+- This increase is not because new panelists with higher subscription likelihood have entered the panel (no new panelists throughout).
+
+
+
+```{r last time answer in survey}
+
+unweight = raw %>% ungroup() %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Answered in Survey", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% ungroup() %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+  
+unweight+ weight
+
+```
+
+```{r last time answered whether subscribed}
+
+unweight = raw %>% filter(field_description == "Subscribe to Video") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Answered Whether They Subscribe to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(field_description == "Subscribe to Video") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+
+```
+
+```{r last time answered yes subscribed}
+
+unweight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Answered Yes to Subscribing to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+unweight + weight
+```
+
+### Notes.
+
+- The increase of panelists saying yes in the panel relates to panelists saying yes to the question for the first time.
+- Note that the panelists answering yes for the first time were posed the question, but responded No before 2023-04-01.
+
+- Ask: Has there been a change in the way the question was formulated?
+
+# Cohort Analysis
+
+## Cohort Creation
+
+### Step 1. Clean Raw Data Such that Panelist that Suddenly Answer Yes After 2023-04 Are Not Accounted For
+
+```{r}
+
+# Get the panelists that answered yes in 2023-04
+usersError.clean1 = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                          lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                          lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>% filter(month >= '2023-04-01') %>% filter(lastTimeAnswered == 0) %>% pull(Panelist)
+
+# Remove these panelists from the raw data
+raw.clean1 = raw %>% filter(Panelist %in% usersError.clean1)
+
+# Create Same Plot
+unweight.clean1 = raw.clean1 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Answered Yes to Subscribing to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight.clean1 = raw.clean1 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+unweight.clean1 + weight.clean1 + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+
+```
+
+### Step 2. Clean Raw Data Such that Panelist that Only Answer Yes Before 2023-04-01 Are Accounted For
+
+```{r}  
+
+# Get the panelists that answered yes after 2022-02-01
+usersError.clean2 = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                          lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                          lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>% filter(month < '2023-04-01') %>% filter(lastTimeAnswered == 0) %>% pull(Panelist)
+
+# Remove these panelists from the raw data
+raw.clean2 = raw %>% filter(Panelist %in% usersError.clean2)
+
+# Create Same Plot
+unweight.clean2 = raw.clean2 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Last Time Answered Yes to Subscribing to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight.clean2 = raw.clean2 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+unweight.clean2 + weight.clean2 + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+```
+
+### Step 3. Clean Raw Data such that Panelist Filled in Every month Only Accounted For
+
+```{r}
+
+usersError.clean3 = raw %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                          lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                          lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>% 
+  summarise(yes.beginning = ifelse(month == '2022-01-01' & lastTimeAnswered[month == "2022-01-01"] == 0, 1, 0), 
+         ever.yes = ifelse(sum(month > "2022-01-01" & lastTimeAnswered == 1) == (n()-1), 1, 0)) %>% 
+  filter(yes.beginning == 1 & ever.yes == 1) %>% pull(Panelist)
+
+# Include only those panelist
+raw.clean3 = raw %>% filter(Panelist %in% usersError.clean3)
+
+# Create Same Plot
+unweight.clean3 = raw.clean3 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Always Answered Yes to Subscribing to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight.clean3 = raw.clean3 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+unweight.clean3 + weight.clean3 + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+### Step 4. Clean Raw Data such that Panelist Filled in Every month Only Accounted For & Observed for Every Month
+
+```{r}  
+
+# Include only those panelist
+raw.clean4 = raw %>% filter(Panelist %in% usersError.clean3) %>% group_by(Panelist) %>% mutate(nMonths = length(unique(month))) %>% filter(nMonths == 29)
+
+# Create same plot
+unweight.clean4 = raw.clean4 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = as.Date(ifelse(is.na(lagMonth), month, lagMonth)),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = n()) %>% ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "Number of Panelists Always Answered Yes to Subscribing to Video", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+weight.clean4 = raw.clean4 %>% filter(field_description == "Subscribe to Video" & Field_Answer == "Yes") %>% distinct(Panelist, month, weight2) %>% arrange(month) %>% group_by(Panelist) %>% mutate(lagMonth = lag(month), 
+                                                                         lagMonth = ifelse(is.na(lagMonth), month, lagMonth),
+                                                                         lastTimeAnswered = round(as.numeric((month - lagMonth))/30),
+                                                                         lastTimeAnswered = ifelse(lastTimeAnswered > 5, 6, lastTimeAnswered)) %>%
+  group_by(month, lastTimeAnswered) %>% summarise(nPanelist = sum(weight2, na.rm = T)) %>%
+ggplot(aes(x = month, y = nPanelist, color = as.factor(lastTimeAnswered))) + geom_line() + geom_point() + theme_apa() + labs(title = "", x = "Months Since Last Answer", y = "Number of Panelists") +ylim(0, NA)
+
+usersError.clean4 = unique(raw.clean4$Panelist)
+
+```
+
+## Descriptives Across Cohorts
+
+### Subscription Comparison for these Consumer Groups
+
+- Total Share (Survey) : Share of Panelists that are subscribed to a platform, measured when panelists have filled in the survey. 
+
+- Total Share (Inferred) : Share of Panelists that are subscribed to a platform, measured when panelists have and have not filled in the survey. We first observe the band on which the subscription took place. To illustrate, a panelist filling in the survey in 2023-04-01 can state that the subscription was active since 3 years. This results in our inference that the subscription was held from 2020-04-01 until 2023-04-01 (at least; if we observe another survey entry with a subscription on that platform, then the subscription prolongs).
+
+```{r}
+
+# Weight needs to be filled in for banded subscriptions
+final.filter = final %>% filter(platform %in% c("Amazon Prime Video", "Apple TV+", "Disney+", "Hulu", "HBO Max", "Netflix")) %>%
+  group_by(Panelist, platform) %>% arrange(month) %>% mutate(weightFilled = weight2,
+                                                             weightFilled = nafill(weightFilled, 'locf'),
+                                                             weightFilled = nafill(weightFilled, "nocb"))
+final.filter = final.filter %>% ungroup() %>% filter(month >= as.Date("2022-01-01") & month <= as.Date('2024-05-01'))  
+
+SubscriptionComparison = function(data){
+  
+  unweight = data %>% filter(platform %in% c("Amazon Prime Video", "Apple TV+", "Disney+", "Hulu", "HBO Max", "Netflix")) %>%
+  group_by(platform, month) %>% summarise(nPanelist = n(),
+                                          nSubbedINFERRED = sum(sub.BAND == 1),
+                                          nSubbedRAW = sum(sub.CURRENT == 1),
+                                          shareINFERRED = nSubbedINFERRED / nPanelist,
+                                          shareRAW = nSubbedRAW / nPanelist)%>% 
+    ggplot(aes(x = month, y = shareINFERRED, color = platform)) + geom_line(aes(linetype = "Total Share (Inferred")) + 
+    geom_line(aes(x = month, y = shareRAW, color = platform, linetype = "Total Share (Survey)")) + theme_apa() + 
+    labs(title = "Penetration Rate per Platform", x = "Period", y = "Share of Panelists") +ylim(0, 1) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+
+  weight = data %>% filter(platform %in% c("Amazon Prime Video", "Apple TV+", "Disney+", "Hulu", "HBO Max", "Netflix")) %>%
+    group_by(platform, month) %>% summarise(nPanelist = sum(weightFilled, na.rm = T),
+                                            nSubbedINFERRED = sum(sub.BAND * weightFilled, na.rm = T),
+                                            shareINFERRED = nSubbedINFERRED / nPanelist,
+                                            nSubbedRAW = sum(sub.CURRENT * weightFilled, na.rm = T),
+                                            shareRAW = nSubbedRAW / nPanelist) %>% 
+    ggplot(aes(x = month, y = shareINFERRED, color = platform)) + geom_line(aes(linetype = "Total Share (Inferred)")) + 
+    geom_line(aes(x = month, y = shareRAW, color = platform, linetype = "Total Share (Survey)")) + theme_apa() + labs(title = "", x = "Period", y = "Share of Panelists") +ylim(0, 1) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Subscription Comparison", subtitle = "Note. Unweighted and Weighted Penetration Rates per Platform"))
+}
+
+SubscriptionComparison(final.filter) + plot_annotation(caption = "All Panelists")
+SubscriptionComparison(final.filter %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+SubscriptionComparison(final.filter %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+SubscriptionComparison(final.filter %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+SubscriptionComparison(final.filter %>% filter(Panelist %in% usersError.clean4)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01 and Observed for Every Month")
+
+
+```
+
+### Notes.
+
+- In all plots, we observe for Total Share (Survey) an increase in 2023-04-01. This is because of the increase of Yes to Subscribe to Video question. 
+- This increase is also visible in the cohort that responded to Yes in all months. This means that the increase is due to a change in the likelihood of panelists listing all of their subscriptions after 2023-04-01.
+
+### Subscription Plan Comparison for These Consumer Groups 
+
+- Ad-Supported Share (Survey) : Share of Panelists that are subscribed to an ad-supported plan, measured when panelists have actually filled in the survey. For this question to pop up in the survey, panelists first need to answer that they are subscribed to this platform in this month. This relates to the fact that we observe an increase after 2023-04-01 in the subscriptions that panelists are listing.
+
+- Ad-Supported Share (Inferred) : Share of Panelists that are subscribed to an ad-supported plan, measured when panelists have and have not filled in the survey. We first observe the band on which the subscription took place. To illustrate, a panelist filling in the survey in 2023-04-01 can state that the subscription was active since 3 years. This results in our inference that the subscription was held from 2020-04-01 until 2023-04-01 (at least; if we observe another survey entry with a subscription on that platform, then the subscription prolongs). As we have inferred the subscription, now we need to infer which plan the panelists was subscribed to. As this question only pops up when the panelists have filled in the survey, we add all missing observations afterwards (e.g., after 2023-04-01, if subscription after is observed) with the last known value (e.g., 2023-04-01). After, we add all missing observations beforehand (e.g., before 2023-04-01) with the first "future" known value (e.g., 2023-04-01). If the panelist first future known value is "Ad Supported", then we infer that the panelist was subscribed to an ad-supported plan before 2023-04-01 since the moment the ad-supported plan was introduced..
+
+```{r}  
+
+# Weight needs to be filled in for banded subscriptions
+final.filter = final.filter %>% ungroup() %>% filter(month >= as.Date("2022-01-01") & month <= as.Date('2024-05-01')) %>% filter(platform %in% c("Amazon Prime Video", "Apple TV+", "HBO Max", "Hulu", "Disney+", "Netflix"))
+
+# Subset raw for Advertising description only
+adplan = raw %>% filter(field_description == "Subcription with Advertisements") %>% select(Panelist, month, platform, Field_Answer)
+
+# Merge
+adplan$month = as.Date(adplan$month)
+final.filter$month = as.Date(final.filter$month)
+final.filter.plan = left_join(final.filter, adplan, by = c("Panelist", "month", "platform"))
+
+
+final.filter.plan = final.filter.plan %>% mutate(raw.AdTier = ifelse(Field_Answer == "Ad Supported", 1, ifelse(Field_Answer == "Ad Free", 0, NA)))
+
+SubscriptionPlanComparison = function(data){
+  
+  unweight = data %>% 
+  group_by(platform, month) %>% summarise(nPanelist = n(),
+                                          nSubbedINFERRED = sum(sub.BAND == 1, na.rm = T),
+                                          nSubbedRAW = sum(sub.CURRENT == 1, na.rm = T),
+                                          shareINFERRED = nSubbedINFERRED / nPanelist,
+                                          shareRAW = nSubbedRAW / nPanelist, 
+                                          nSubbedTierINFERRED = sum(sub.BAND*AdTier, na.rm = T), 
+                                          nSubbedTierRAW = sum(sub.BAND*raw.AdTier, na.rm = T),
+                                          shareTierRAW = nSubbedTierRAW / nPanelist,
+                                          shareTierINFERRED = nSubbedTierINFERRED / nPanelist)%>% 
+    ggplot(aes(x = month, y = shareINFERRED, color = platform)) + 
+    geom_line(aes(linetype = "Total Share (Inferred")) + 
+    geom_line(aes(x = month, y = shareTierINFERRED, color = platform, linetype = "Ad-Supported Share (Inferred)")) + 
+    geom_line(aes(x = month, y = shareTierRAW, color = platform, linetype = "Ad-Supported Share (Survey)")) + theme_apa() + 
+    labs(title = "Penetration Rate per Platform", x = "Period", y = "Share of Panelists") +ylim(0, 1)
+
+  weight = data %>%
+    group_by(platform, month) %>% summarise(nPanelist = sum(weightFilled, na.rm = T),
+                                            nSubbed = sum(sub.BAND * weightFilled, na.rm = T),
+                                            nSubbedTierINFERRED = sum(sub.BAND*AdTier*weightFilled, na.rm = T), 
+                                            nSubbedTierRAW = sum(sub.BAND*raw.AdTier*weightFilled, na.rm = T),
+                                            share = nSubbed / nPanelist,
+                                            shareTierRAW = nSubbedTierRAW / nPanelist,
+                                            shareTierINFERRED = nSubbedTierINFERRED / nPanelist) %>% 
+    ggplot(aes(x = month, y = share, color = platform)) + geom_line(aes(linetype = "Total Share (Inferred)")) +
+    geom_line(aes(x = month, y = shareTierINFERRED, color = platform, linetype = "Ad-Supported Share (Inferred)")) + 
+    geom_line(aes(x = month, y = shareTierRAW, color = platform, linetype = "Ad-Supported Share (Survey)")) + theme_apa() + labs(title = "", x = "Period", y = "Share of Panelists") +ylim(0, 1)
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Subscription Plan Comparison", subtitle = "Note. Unweighted and Weighted Penetration Rates per Platform"))
+  
+}
+
+SubscriptionPlanComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+SubscriptionPlanComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+SubscriptionPlanComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+SubscriptionPlanComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+
+```
+
+
+### Inference of Subscriptions
+
+
+```{r}
+
+FilledSubscriptionComparison = function(data){
+  
+  unweight = data %>% ungroup() %>% 
+    group_by(Panelist, platform) %>% 
+    mutate(maxSubscriptionTime = max(SubscriptionTime),
+           InferredAtLaterPoint = ifelse(sub.CURRENT == 0 & sub.BAND == 1 & SubscriptionTime == 1, 1, 0), 
+           FilledInOnceAndLater = ifelse(sub.CURRENT == 1 & SubscriptionTime != maxSubscriptionTime, 1, 0),
+           InferredOnceAndLater = ifelse(sub.BAND == 1 & SubscriptionTime != maxSubscriptionTime, 1, 0)) %>%
+    ungroup() %>% group_by(month, platform) %>%
+    summarise(InferredAtLaterPoint = sum(InferredAtLaterPoint, na.rm = T),
+              InferredOnceAndLater = sum(InferredOnceAndLater, na.rm = T),
+              FilledInOnceAndLater = sum(FilledInOnceAndLater, na.rm = T)) %>%
+    ggplot(aes(x = month, y = InferredAtLaterPoint, color = platform)) + geom_line(aes(linetype = "Inferred at Later Point")) +
+    geom_line(aes(x = month, y = InferredOnceAndLater, color = platform, linetype = "Inferred Once and Later")) +
+    geom_line(aes(x = month, y = FilledInOnceAndLater, color = platform, linetype = "Filled In Once and Later")) + theme_apa() +
+    labs(title = "Subscription Plan Comparison", x = "Period", y = "Share of Panelists") +ylim(0, NA) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  weight = data %>% ungroup() %>%
+    group_by(Panelist, platform) %>% 
+    mutate(maxSubscriptionTime = max(SubscriptionTime),
+           InferredAtLaterPoint = ifelse(sub.CURRENT == 0 & sub.BAND == 1 & SubscriptionTime == 1, 1, 0), 
+           FilledInOnceAndLater = ifelse(sub.CURRENT == 1 & SubscriptionTime != maxSubscriptionTime, 1, 0),
+           InferredOnceAndLater = ifelse(sub.BAND == 1 & SubscriptionTime != maxSubscriptionTime, 1, 0)) %>%
+    ungroup() %>% group_by(month, platform) %>%
+    summarise(InferredAtLaterPoint = sum(InferredAtLaterPoint*weightFilled, na.rm = T),
+              InferredOnceAndLater = sum(InferredOnceAndLater*weightFilled, na.rm = T),
+              FilledInOnceAndLater = sum(FilledInOnceAndLater*weightFilled, na.rm = T)) %>%
+    ggplot(aes(x = month, y = InferredAtLaterPoint, color = platform)) + geom_line(aes(linetype = "Inferred at Later Point")) +
+    geom_line(aes(x = month, y = InferredOnceAndLater, color = platform, linetype = "Inferred Once and Later")) +
+    geom_line(aes(x = month, y = FilledInOnceAndLater, color = platform, linetype = "Filled In Once and Later")) + theme_apa() +
+    labs(title = "", x = "Period", y = "No. Panelists") +ylim(0, NA) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "When was Subscription Inferred?", subtitle = "Note. Unweighted and Weighted Penetration Rates per Platform"))
+}
+
+FilledSubscriptionComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+FilledSubscriptionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+FilledSubscriptionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+FilledSubscriptionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+
+```
+
+### Cancellations of the Platforms
+
+```{r}
+
+CancellationComparison = function(data){
+  
+  unweight = data %>% ungroup() %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lagSub = lag(sub.BAND),
+           lagSub = ifelse(is.na(lagSub), 0, lagSub),
+           cancelSub = ifelse((sub.BAND - lagSub) == -1,1,0)) %>% ungroup() %>% group_by(month, platform) %>%
+    summarise(cancelSub = sum(cancelSub, na.rm = T)) %>%
+    ggplot(aes(x = month, y = cancelSub, color = platform)) + geom_line() + theme_apa() +
+    labs(title = "Cancellation Comparison", x = "Period", y = "No. Panelists") +ylim(0, NA) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  weight = data %>% ungroup() %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lagSub = lag(sub.BAND),
+           lagSub = ifelse(is.na(lagSub), 0, lagSub),
+           cancelSub = ifelse((sub.BAND - lagSub) == -1,1,0)) %>% ungroup() %>% group_by(month, platform) %>%
+    summarise(cancelSub = sum(cancelSub*weightFilled, na.rm = T)) %>%
+    ggplot(aes(x = month, y = cancelSub, color = platform)) + geom_line() + theme_apa() +
+    labs(title = "", x = "Period", y = "No. Panelists") +ylim(0, NA) +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Cancellation Comparison", subtitle = "Note. Unweighted and Weighted Penetration Rates per Platform"))
+}
+
+CancellationComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+CancellationComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+CancellationComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+CancellationComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+  
+```
+
+### Notes.
+
+- In all plots, we observe for Ad-Supported Share (Survey) an increase in 2023-04-01. This is because of the increase of Yes to Subscribe to Video question.
+
+- In all plots, we observe a steepness in the ad-supported share when the platform launch these platforms. 
+- Especially in the first two plots, in which we do not have strict rules about continual filling in of the panel, we observe a discrepancy between the steepness in ad-supported share when platforms launching the plans. 
+
+- In the plot of the cohort that we have observed saying yes before the launch of these plans, the difference in steepness is not so pronounced between the inferred and survey version.
+- Similarly, in the plot of the cohort that we always observe (last graph), this steepness in ad-supported share is even more similar when these platforms launch their ad-supported plans. 
+
+
+
+## Market Expansion, Multihoming, Substitution, Cannibalization
+
+### Market Expansion: First-Time Subscriptions
+
+```{r}
+
+MarketExpansionComparison = function(data){
+  
+  unweight = data %>% 
+    group_by(Panelist) %>% arrange(desc(AdTier)) %>% distinct(month, .keep_all = T) %>% arrange(month) %>%
+    mutate(summed.SubscriptionSet = cumsum(SubscriptionSet)) %>% ungroup() %>% 
+    group_by(month) %>% mutate(totalDemand = sum(sub.BAND == 1, na.rm = T),
+                               totalDemandAdSupported = sum(AdTier == 1, na.rm = T)) %>%
+    filter(summed.SubscriptionSet == 1) %>%
+    group_by(month) %>% summarise(totalDemand = unique(totalDemand),
+                                  totalDemandAdSupported = unique(totalDemandAdSupported),
+                                  newDemand = n(),
+                                  newAdSupported = sum(AdTier, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = newDemand, color = "First-time sub")) + geom_line() +
+    geom_line(aes(x = month, y = newAdSupported, color = "First-time & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
+  weight = data %>%
+    group_by(Panelist) %>% arrange(desc(AdTier)) %>% distinct(month, .keep_all = T) %>% arrange(month) %>%
+    mutate(summed.SubscriptionSet = cumsum(SubscriptionSet)) %>% ungroup() %>%
+    group_by(month) %>% mutate(totalDemand = sum(sub.BAND * weightFilled, na.rm = T),
+                               totalDemandAdSupported = sum(AdTier* weightFilled, na.rm = T)) %>%
+    filter(summed.SubscriptionSet == 1) %>%
+    group_by(month) %>% summarise(totalDemand = unique(totalDemand),
+                                  totalDemandAdSupported = unique(totalDemandAdSupported),
+                                  newDemand = sum(weightFilled, na.rm = T),
+                                  newAdSupported = sum(AdTier* weightFilled, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = newDemand, color = "First-time sub")) + geom_line() +
+    geom_line(aes(x = month, y = newAdSupported, color = "First-time & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+    
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Market Expansion Comparison", subtitle = "Note. Deletion of the First Month") )
+  
+}
+
+MarketExpansionComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+MarketExpansionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+MarketExpansionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+MarketExpansionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+### Multihoming: Added One Subscription to their Active Subscriptions
+
+```{r}
+
+MultihomingComparison = function(data){
+  
+  unweight = data %>% 
+    group_by(Panelist) %>% arrange(desc(AdTier)) %>% distinct(month, .keep_all = T) %>% arrange(month) %>%
+    mutate(lag.SubscriptionSet = lag(SubscriptionSet),
+           lag.SubscriptionSet = ifelse(is.na(lag.SubscriptionSet), 0, lag.SubscriptionSet),
+           difference.SubscriptionSet = SubscriptionSet - lag.SubscriptionSet) %>% ungroup() %>% 
+    filter(difference.SubscriptionSet > 1) %>%
+    group_by(month) %>% summarise(newDemand = n(),
+                                  newAdSupported = sum(AdTier, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = newDemand, color = "Multihoming sub")) + geom_line() +
+    geom_line(aes(x = month, y = newAdSupported, color = "Multihoming & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+  weight = data %>%
+    group_by(Panelist) %>% arrange(desc(AdTier)) %>% distinct(month, .keep_all = T) %>% arrange(month) %>%
+    mutate(lag.SubscriptionSet = lag(SubscriptionSet),
+           lag.SubscriptionSet = ifelse(is.na(lag.SubscriptionSet), 0, lag.SubscriptionSet),
+           difference.SubscriptionSet = SubscriptionSet - lag.SubscriptionSet) %>% ungroup() %>%
+    filter(difference.SubscriptionSet > 1) %>%
+    group_by(month) %>% summarise(newDemand = sum(weightFilled, na.rm = T),
+                                  newAdSupported = sum(AdTier* weightFilled, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = newDemand, color = "Multihoming sub")) + geom_line() +
+    geom_line(aes(x = month, y = newAdSupported, color = "Multihoming & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Multihoming Comparison", subtitle = "Note. Panelist adds a subscription to their Subscription Set, hence total subscriptions +1 when adding") )
+                                                   
+}
+
+MultihomingComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+MultihomingComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean1)) + plot_annotation(caption = "Panelists that Filled in Yes Only After 2023-04-01")
+MultihomingComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean2)) + plot_annotation(caption = "Panelists that Filled in Yes Before 2023-04-01")
+MultihomingComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+### Multihoming (Subscription Set Size)
+
+```{r}
+
+SubscriptionSetComparison = function(data){
+  
+  unweight = data %>% 
+    filter(!is.na(AdTier)) %>%
+    group_by(Panelist, month) %>% arrange(desc(AdTier)) %>% distinct(month, .keep_all = T) %>% arrange(month) %>% ungroup() %>% group_by(month, AdTier) %>%
+    summarise(SubscriptionSet = mean(SubscriptionSet, na.rm = T)) %>%
+    ggplot(aes(x = month, y = SubscriptionSet, color = as.factor(AdTier))) + geom_line() + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+  
+  return(unweight + plot_layout(guides = 'collect') + plot_annotation(title = "Subscription Set Size Comparison") )
+}
+
+SubscriptionSetComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+SubscriptionSetComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+
+### Substitution: Removed One Subscription from their Active Subscriptions and Added A New One
+
+- Note: This counts substitution when in the exact same month it is replaced for a new one
+
+```{r}
+
+SubstitutionComparison = function(data){
+  
+  unweight = data %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.Sub = lag(sub.BAND)) %>% ungroup() %>%
+    mutate(lag.Sub = ifelse(is.na(lag.Sub), sub.BAND, lag.Sub)) %>% 
+    mutate(difference.Sub = sub.BAND - lag.Sub,
+           new.Sub = as.numeric(difference.Sub == 1),
+           cancel.Sub = as.numeric(difference.Sub == -1)) %>% ungroup() %>%
+    group_by(Panelist, month) %>% mutate(across.NewSub = sum(new.Sub, na.rm = T),
+                                            across.CancelSub = sum(cancel.Sub, na.rm = T),
+                                            newSub.IsAd = ifelse(sum(new.Sub * AdTier, na.rm = T) > 0, 1, 0),
+                                            substituted = ifelse(across.NewSub > 0 & across.CancelSub > 0, 1, 0),
+                                            substitutedAdSupported = ifelse(across.NewSub > 0 & across.CancelSub > 0 & newSub.IsAd > 0, 1, 0)) %>%
+    group_by(month) %>% summarise(substitutedDemand = sum(substituted, na.rm = T),
+                                  substitutedAdSupported = sum(substitutedAdSupported, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = substitutedDemand, color = "Substitution sub")) + geom_line() +
+    geom_line(aes(x = month, y = substitutedAdSupported, color = "Substitution & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+    
+  weight = data %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.Sub = lag(sub.BAND)) %>% ungroup() %>%
+    mutate(lag.Sub = ifelse(is.na(lag.Sub), sub.BAND, lag.Sub)) %>%
+    mutate(difference.Sub = sub.BAND - lag.Sub,
+           new.Sub = as.numeric(difference.Sub == 1),
+           cancel.Sub = as.numeric(difference.Sub == -1)) %>% ungroup() %>%
+    group_by(Panelist, month) %>% summarise(across.NewSub = sum(new.Sub * weightFilled, na.rm = T),
+                                            across.CancelSub = sum(cancel.Sub * weightFilled, na.rm = T),
+                                            newSub.IsAd = ifelse(sum(new.Sub * AdTier * weightFilled, na.rm = T) > 0, 1, 0),
+                                            substituted = ifelse(across.NewSub > 0 & across.CancelSub > 0, weightFilled, 0),
+                                            substitutedAdSupported = ifelse(across.NewSub > 0 & across.CancelSub > 0 & newSub.IsAd > 0, weightFilled, 0)) %>%
+    group_by(month) %>% summarise(substitutedDemand = sum(substituted, na.rm = T),
+                                  substitutedAdSupported = sum(substitutedAdSupported, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = substitutedDemand, color = "Substitution sub")) + geom_line() +
+    geom_line(aes(x = month, y = substitutedAdSupported, color = "Substitution & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+    
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Subscription Substitution Comparison", subtitle = "Note. Panelist needs to cancel a subscription in t and add another subscription in t"))
+  
+}
+
+SubstitutionComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+SubstitutionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+### Substitution Alternative: Removed One Subscription from their Active Subscriptions and Added A New One within One Period
+
+```{r}
+
+SubstitutionComparison = function(data){
+  
+  unweight = data %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.Sub = lag(sub.BAND),
+           lag.Sub = ifelse(is.na(lag.Sub), sub.BAND, lag.Sub),
+           difference.Sub = sub.BAND - lag.Sub,
+           new.Sub = as.numeric(difference.Sub == 1),
+           cancel.Sub = as.numeric(difference.Sub == -1),
+           lead.cancelSub = lead(cancel.Sub),
+           lead.cancelSub = ifelse(is.na(lead.cancelSub), cancel.Sub, lead.cancelSub)) %>% ungroup() %>%
+    group_by(Panelist, month) %>% summarise(across.NewSub = sum(new.Sub, na.rm = T),
+                                            across.CancelSub = sum(cancel.Sub, lead.cancelSub, na.rm = T),
+                                            newSub.IsAd = ifelse(sum(new.Sub * AdTier, na.rm = T) > 0, 1, 0),
+                                            substituted = ifelse(across.NewSub > 0 & across.CancelSub > 0, 1, 0),
+                                            substitutedAdSupported = ifelse(across.NewSub > 0 & across.CancelSub > 0 & newSub.IsAd > 0, 1, 0)) %>%
+    group_by(month) %>% summarise(substitutedDemand = sum(substituted, na.rm = T),
+                                  substitutedAdSupported = sum(substitutedAdSupported, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = substitutedDemand, color = "Substitution sub")) + geom_line() +
+    geom_line(aes(x = month, y = substitutedAdSupported, color = "Substitution & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+    
+  weight = data %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.Sub = lag(sub.BAND),
+           lag.Sub = ifelse(is.na(lag.Sub), sub.BAND, lag.Sub),
+           difference.Sub = sub.BAND - lag.Sub,
+           new.Sub = as.numeric(difference.Sub == 1),
+           cancel.Sub = as.numeric(difference.Sub == -1),
+           lead.cancelSub = lead(cancel.Sub),
+           lead.cancelSub = ifelse(is.na(lead.cancelSub), cancel.Sub, lead.cancelSub)) %>% ungroup() %>%
+    group_by(Panelist, month) %>% summarise(period.Cancel = sum(cancel.Sub, lead.cancelSub, na.rm=T),
+                                            across.NewSub = sum(new.Sub * weightFilled, na.rm = T),
+                                            across.CancelSub = sum(period.Cancel * weightFilled, na.rm = T),
+                                            newSub.IsAd = ifelse(sum(new.Sub * AdTier * weightFilled, na.rm = T) > 0, 1, 0),
+                                            substituted = ifelse(across.NewSub > 0 & across.CancelSub > 0, weightFilled, 0),
+                                            substitutedAdSupported = ifelse(across.NewSub > 0 & across.CancelSub > 0 & newSub.IsAd > 0, weightFilled, 0)) %>%
+    group_by(month) %>% summarise(substitutedDemand = sum(substituted, na.rm = T),
+                                  substitutedAdSupported = sum(substitutedAdSupported, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = substitutedDemand, color = "Substitution sub")) + geom_line() +
+    geom_line(aes(x = month, y = substitutedAdSupported, color = "Substitution & ad")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+    
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Subscription Substitution Comparison", subtitle = "Note. Panelist need to cancel one platform in t or t+1, and add a platform in t"))
+  
+}
+
+SubstitutionComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+SubstitutionComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+### Cannibalization: Ad-Free Subscriptions Moving to Ad-Supported Subscriptions or Vice Versa
+
+```{r}
+
+CannibalizationComparison = function(data){
+  
+  unweight = data %>% filter(sub.BAND == 1) %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.AdTier = lag(AdTier),
+           lag.AdTier = ifelse(is.na(lag.AdTier), AdTier, lag.AdTier),
+           difference.AdTier = AdTier - lag.AdTier,
+           cannibalized.AdTier = as.numeric(difference.AdTier == 1),
+           spillover.AdTier = as.numeric(difference.AdTier == -1)) %>% ungroup() %>%
+    group_by(month) %>% summarise(cannibalized = sum(cannibalized.AdTier, na.rm = T),
+                                  spillover = sum(spillover.AdTier, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = cannibalized, color = "Cannibalization sub")) + geom_line() +
+    geom_line(aes(x = month, y = spillover, color = "Spillover sub")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+  weight = data %>% filter(sub.BAND == 1) %>% group_by(Panelist, platform) %>% arrange(month) %>%
+    mutate(lag.AdTier = lag(AdTier),
+           lag.AdTier = ifelse(is.na(lag.AdTier), AdTier, lag.AdTier),
+           difference.AdTier = AdTier - lag.AdTier,
+           cannibalized.AdTier = as.numeric(difference.AdTier == 1),
+           spillover.AdTier = as.numeric(difference.AdTier == -1)) %>% ungroup() %>%
+    group_by(month) %>% summarise(cannibalized = sum(cannibalized.AdTier * weightFilled, na.rm = T),
+                                  spillover = sum(spillover.AdTier * weightFilled, na.rm = T)) %>%
+    filter(month != as.Date("2022-01-01")) %>%
+    ggplot(aes(x = month, y = cannibalized, color = "Cannibalization sub")) + geom_line() +
+    geom_line(aes(x = month, y = spillover, color = "Spillover sub")) + theme_apa() +
+    # ticks only per year
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +ylim(0, NA)
+  
+  
+  return(unweight + weight + plot_layout(guides = 'collect') + plot_annotation(title = "Cannibalization & Spillover Comparison across all Platforms", subtitle = "Note. Only existing subscribers switching to another plan are considered"))
+}
+
+
+CannibalizationComparison(final.filter.plan) + plot_annotation(caption = "All Panelists")
+CannibalizationComparison(final.filter.plan %>% filter(Panelist %in% usersError.clean3)) + plot_annotation(caption = "Panelists that Filled in Yes Every Month Since 2022-01-01")
+
+```
+
+
+

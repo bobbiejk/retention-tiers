@@ -1,0 +1,5 @@
+*lyx~
+gen/
+*.Rhistory
+data/
+*.html
